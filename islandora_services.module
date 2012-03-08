@@ -1,0 +1,176 @@
+<?php
+
+/**
+ * Islandora menu hook
+ * @return string 
+ */
+function islandora_services_menu() {
+
+    // Create an array to return
+    $items = array();
+
+    // Display all endpoints page
+    $items['islandora_services/list'] = array(
+        'title' => 'Islandora Services List',
+        'page callback' => 'islandora_services_list_page',
+        'access arguments' => array('view'),
+        'type' => MENU_NORMAL_ITEM
+    );
+
+    // Get all the end points
+    $all_end_points = module_invoke_all('register_endpoints');
+    
+    // Loop through all the modules
+    foreach($all_end_points as $module => $endpoints) {
+        
+        // Loop through all the endpoints in a module
+        foreach($endpoints as $endpoint => $params) {
+
+            // Use an endpoint
+            $items['islandora_services/rest/' . $module ."/". $endpoint] = array(
+                'title' => $params['title'],
+                'page callback' => 'islandora_services_handler',
+                'page arguments' => array($module, $endpoint),
+                'access arguments' => $params['security'],
+                'type' => MENU_CALLBACK
+            );
+        }
+    }
+    
+    // Return the link
+    return $items;
+}
+
+function islandora_services_list_page() {
+
+    // Create the return element
+    $content = null;
+    
+    // Get all the end points
+    $all_end_points = module_invoke_all('register_endpoints');
+    
+    // Create the header
+    foreach($all_end_points as $module => $endpoints) {
+        
+        // Create the header
+        $header = array('module','endpoint');
+        
+        // Loop through the endpoints 
+        foreach($endpoints as $endpoint => $params) {
+            
+            // Loop through the parameters
+            foreach($params as $param => $value) {
+                
+                // Add the param name to the header
+                array_push($header, $param);
+            }
+            
+            // Finished header so leave
+            break;
+        }
+
+        // Collect all the rows
+        $allrows = array();
+        
+        // Loop through all the endpoints
+        foreach($endpoints as $endpoint => $params) {
+
+            // Create an array of parameters
+            $row = array( $module, $endpoint );
+            foreach($params as $param => $value) {
+
+                // If the value is blank the replace it
+                if ( $value == null ) {
+                    
+                    // Set the value to display nothing 
+                    $value = "None";
+                } 
+                
+                // Push the value onto the row
+                $row[] = $value;
+            }
+
+            // Push the row onto the full list
+            $allrows[] = $row;
+        }
+
+        // Create a table and add it to the render list
+        $content .= theme_table($header, $allrows);
+    }
+    
+    // Return the content for render
+    return $content;
+}
+
+function islandora_services_handler() {
+    
+    $args = func_get_args();
+    $results = null;
+    if ( count($args) >= 2 )
+    {
+        $module = array_shift($args);
+        $endpoint = array_shift($args);
+
+        // Get the endpoints
+        $module_endpoints = module_invoke($module, 'register_endpoints');
+        
+        // Get the details of the endpoit
+        $function = $module_endpoints[$module][$endpoint]['function'];
+        $param_count = $module_endpoints[$module][$endpoint]['param_count'];
+        
+        // Check the param count
+        if ( $param_count != count($args)) {
+            return "Parameter count doesn't match!";
+        }
+        
+        //$results = module_invoke($module, $function, $args);
+        $results = call_user_func_array($module.'_'.$function, $args);
+    }
+    
+    return $results;
+}
+
+/**
+ * Example register endpoints hook
+ * @return type 
+ */
+function islandora_services_register_endpoints()
+{
+    // Define the end points
+    return array(
+        'islandora_services' => array (
+            'myendpoint' => array (
+                'title' => 'test callback',
+                'function' => 'myendpoint_handler',
+                'param_count' => 1,
+                'example' => 'myendpoint/2345',
+                'security' => array('view')
+            ),
+            'myendpoint2' => array (
+                'title' => 'test callback2',
+                'function' => 'myendpoint_handler2',
+                'param_count' => 2,
+                'example' => 'myendpoint/2345/235',
+                'security' => array('view')
+            ),
+        )
+    );
+}
+
+/**
+ * Example callback
+ * @param type $param 
+ */
+function islandora_services_myendpoint_handler($param) {
+    $results = "islandora_services_myendpoint_handler(".$param.");";
+    return $results;
+}
+
+/**
+ * Example callback
+ * @param type $param 
+ */
+function islandora_services_myendpoint_handler2($param, $param2) {
+    $results = "islandora_services_myendpoint_handler(".$param.",".$param2.");";
+    return $results;
+}
