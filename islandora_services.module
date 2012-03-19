@@ -1,5 +1,8 @@
 <?php
 
+// Create a global array for all the endpoints
+//$end_point_list = array();
+
 /**
  * Islandora menu hook
  * @return string 
@@ -17,26 +20,29 @@ function islandora_services_menu() {
         'type' => MENU_NORMAL_ITEM
     );
 
-    // Get all the end points
-    $all_end_points = module_invoke_all('register_endpoints');
+    // Create a global list of all the services
+    $services = module_invoke_all('register_services');
     
-    // Loop through all the modules
-    foreach($all_end_points as $module => $endpoints) {
+    // Store the list for later use
+    variable_set('islandora_services', $services);
+    
+    // Loop through all the modules to get endpoints
+    foreach($services as $module => $endpoints) {
         
-        // Loop through all the endpoints in a module
+        // Loop through all the end points to get the parameters
         foreach($endpoints as $endpoint => $params) {
-
-            // Use an endpoint
-            $items['islandora_services/rest/' . $module ."/". $endpoint] = array(
+                
+            // Register an end point with drupal
+            $items['islandora_services/'. $module ."/". $endpoint] = array(
                 'title' => $params['title'],
-                'page callback' => 'islandora_services_handler',
+                'page callback' => 'islandora_service_handler',
                 'page arguments' => array($module, $endpoint),
                 'access arguments' => $params['security'],
                 'type' => MENU_CALLBACK
             );
         }
     }
-    
+
     // Return the link
     return $items;
 }
@@ -45,113 +51,102 @@ function islandora_services_list_page() {
 
     // Create the return element
     $content = null;
-    
-    // Get all the end points
-    $all_end_points = module_invoke_all('register_endpoints');
-    
-    // Create the header
-    foreach($all_end_points as $module => $endpoints) {
+
+    $header = array('Module', "End Point", "Title", "Callback", "Render In Drupal", "Example");
+    $rows = array();
+    $services = variable_get('islandora_services', NULL);
+
+    // Loop through all the modules to get endpoints
+    foreach($services as $module => $endpoints) {
         
-        // Create the header
-        $header = array('module','endpoint');
-        
-        // Loop through the endpoints 
+        // Loop through all the end points to get the parameters
         foreach($endpoints as $endpoint => $params) {
             
-            // Loop through the parameters
-            foreach($params as $param => $value) {
-                
-                // Add the param name to the header
-                array_push($header, $param);
+            $render = "False";
+            if ( $params['render_drupal'] == true ) {
+                $render = "True";
             }
             
-            // Finished header so leave
-            break;
+            // Create the data row to be added to the table
+            $row = array($module, $endpoint, $params['title'], $params['function'], $render, $module . '/' . $params['example']);
+            
+            // Add it to the table
+            $rows[] = $row;
         }
-
-        // Collect all the rows
-        $allrows = array();
-        
-        // Loop through all the endpoints
-        foreach($endpoints as $endpoint => $params) {
-
-            // Create an array of parameters
-            $row = array( $module, $endpoint );
-            foreach($params as $param => $value) {
-
-                // If the value is blank the replace it
-                if ( $value == null ) {
-                    
-                    // Set the value to display nothing 
-                    $value = "None";
-                } 
-                
-                // Push the value onto the row
-                $row[] = $value;
-            }
-
-            // Push the row onto the full list
-            $allrows[] = $row;
-        }
-
-        // Create a table and add it to the render list
-        $content .= theme_table($header, $allrows);
     }
+    // Create a table and add it to the render list
+    $content .= theme_table($header, $rows);
     
     // Return the content for render
     return $content;
 }
 
-function islandora_services_handler() {
-    
-    $args = func_get_args();
-    $results = null;
-    if ( count($args) >= 2 )
-    {
-        $module = array_shift($args);
-        $endpoint = array_shift($args);
+function islandora_service_handler() {
 
-        // Get the endpoints
-        $module_endpoints = module_invoke($module, 'register_endpoints');
-        
-        // Get the details of the endpoit
-        $function = $module_endpoints[$module][$endpoint]['function'];
-        $param_count = $module_endpoints[$module][$endpoint]['param_count'];
-        
-        // Check the param count
-        if ( $param_count != count($args)) {
-            return "Parameter count doesn't match!";
-        }
-        
-        //$results = module_invoke($module, $function, $args);
-        $results = call_user_func_array($module.'_'.$function, $args);
-    }
+    // Get the arguments
+    $args = func_get_args();
+
+    // Check to make sure we have the module and endpoint parameters
+    if ( count($args) < 2 )
+    {
+        var_dump($args);
+        return "Malformed endpoint";
+    }    
     
-    return $results;
+    // Get the list of services
+    $services = variable_get('islandora_services', NULL);
+    
+    // Create the results to be displayed
+    $results = null;
+
+    // Pop the module and endpoint of the front of the list
+    $module = array_shift($args);
+    $endpoint = array_shift($args);
+    
+    // Get the details of the end 
+    $param_count = $services[$module][$endpoint]['param_count'];
+    $function = $services[$module][$endpoint]['function'];
+    $render_drupal = $services[$module][$endpoint]['render_drupal'];
+        
+    // Check the param count
+    if ( $param_count != count($args) ) {
+        return "Parameter count doesn't match!";
+    }
+        
+    //$results = module_invoke($module, $function, $args);
+    $results = call_user_func_array($module.'_'.$function, $args);
+    
+    if ( $render_drupal == true ) {
+        return $results;
+    } else {
+        echo $results;
+    }
 }
 
 /**
  * Example register endpoints hook
  * @return type 
  */
-function islandora_services_register_endpoints()
+function islandora_services_register_services()
 {
     // Define the end points
     return array(
         'islandora_services' => array (
             'myendpoint' => array (
-                'title' => 'test callback',
-                'function' => 'myendpoint_handler',
-                'param_count' => 1,
-                'example' => 'myendpoint/2345',
-                'security' => array('view')
+                'title' => 'test callback', 
+                'function' => 'myendpoint_handler', 
+                'param_count' => 1, 
+                'security' => array('access content'),
+                'render_drupal' => false, 
+                'example' => 'myendpoint/{value}',
             ),
             'myendpoint2' => array (
                 'title' => 'test callback2',
                 'function' => 'myendpoint_handler2',
                 'param_count' => 2,
-                'example' => 'myendpoint/2345/235',
-                'security' => array('view')
+                'security' => array('access content'),
+                'render_drupal' => true,
+                'example' => 'myendpoint/{value1}/{value2}',
             ),
         )
     );
