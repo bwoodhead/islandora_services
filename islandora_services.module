@@ -74,7 +74,7 @@ function islandora_services_list_page() {
                 $handler = $params['function'];
             } elseif ( array_key_exists('datastream', $params) ) {
                 $type = "Datastream";
-                $handler = $params['datastream'];
+                $handler = "Datastream: " . $params['datastream'];
             } elseif ( array_key_exists('file', $params) ) {
                 $type = "File Passthru";
                 $handler = $params['file'];
