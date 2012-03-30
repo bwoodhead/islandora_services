@@ -48,13 +48,16 @@ function islandora_services_list_page() {
 
     // Create the return element
     $content = null;
-            
-    $header = array('Module', "End Point", "Title", "Type", "Handler", "Standalone", "Format", "Example");
+    
+    $header = array("End Point", "Title", "Type", "Handler", "Standalone", "Format", "Example");
     $rows = array();
     $services = variable_get('islandora_services', NULL);
 
     // Loop through all the modules to get endpoints
     foreach($services as $module => $endpoints) {
+        
+        $content .= "<br><b>" . $module . "</b><br>";
+        $rows = array();
         
         // Loop through all the end points to get the parameters
         foreach($endpoints as $endpoint => $params) {
@@ -91,14 +94,15 @@ function islandora_services_list_page() {
             }
             
             // Create the data row to be added to the table
-            $row = array($module, $endpoint, $params['title'], $type, $handler, $standalone, $format, $url);
+            $row = array($endpoint, $params['title'], $type, $handler, $standalone, $format, $url);
             
             // Add it to the table
             $rows[] = $row;
         }
+        
+        // Create a table and add it to the render list
+        $content .= theme_table($header, $rows);
     }
-    // Create a table and add it to the render list
-    $content .= theme_table($header, $rows);
     
     // Return the content for render
     return $content;
