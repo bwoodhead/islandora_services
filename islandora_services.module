@@ -28,7 +28,11 @@ function islandora_services_menu() {
         
         // Loop through all the end points to get the parameters
         foreach($endpoints as $endpoint => $params) {
-                
+            
+            if ( !array_key_exists('standalone', $params) ) {
+                $params['standalone'] = true;
+            }
+            
             // Register an end point with drupal
             $items['islandora_services/'. $module ."/". $endpoint] = array(
                 'title' => $params['title'],
@@ -68,7 +72,6 @@ function islandora_services_list_page() {
             if ( array_key_exists('function', $params) ) {
                 $type = "Callback";
                 $handler = $params['function'];
-                
             } elseif ( array_key_exists('datastream', $params) ) {
                 $type = "Datastream";
                 $handler = $params['datastream'];
@@ -78,11 +81,12 @@ function islandora_services_list_page() {
             }
             
             // Get the render status
-            $standalone = "False";
-            if ( $params['standalone'] == true ) {
-                $standalone = "True";
-            } 
-            
+            $standalone = "True";
+            if ( array_key_exists('standalone', $params) ) {
+                if ( $params['standalone'] != true ) {
+                    $standalone = "False";
+                } 
+            }
             
             global $base_url;
             $url = $base_url . '/' . $module . '/' . $params['example'];
@@ -127,6 +131,17 @@ function islandora_service_handler() {
     $module = array_shift($args);
     $params = array_shift($args);
     
+    // Set it to standalone by default
+    $standalone = true;
+    
+    // Did the user set the standalone flag
+    if ( array_key_exists('standalone', $params) ) {
+        
+        // Use the users flag
+        $standalone = $params['standalone'];
+    }
+    
+    // Did the user define a function callback
     if ( array_key_exists('function', $params) ) {
    
         // Check the param count
@@ -138,7 +153,7 @@ function islandora_service_handler() {
         $results = call_user_func_array($module.'_'.$function, $args);
         
         // Do we want this to be standalone or rendered in drupal
-        if ( $params['standalone'] == true ) {
+        if ( $standalone == true ) {
             if ( array_key_exists('format', $params) ) {
                 
                 // Set the header type
@@ -147,6 +162,7 @@ function islandora_service_handler() {
         }
 
     } 
+    // Did the user define a datastream that they wanted
     elseif ( array_key_exists('datastream', $params) ) {
 
         // Check the param count
@@ -158,10 +174,11 @@ function islandora_service_handler() {
         $results = makeObject($args[0], $params['datastream']);
 
         // Do we want this to be standalone or rendered in drupal
-        if ( $params['standalone'] == true ) {
+        if ( $standalone == true ) {
             //header("Content-type: ???");
         }
     } 
+    // Did the user define a file that they want passed through
     elseif ( array_key_exists('file', $params) ) {
         
         // Create a file handler to the player
@@ -171,7 +188,7 @@ function islandora_service_handler() {
         $results = file_get_contents($fileHandler);
     
         // Do we want this to be standalone or rendered in drupal
-        if ( $params['standalone'] == true ) {
+        if ( $standalone == true ) {
             // Set the header to shockwave
             header("Content-type: ". mime_content_type($file));
             header("Content-Length: " . filesize($fileHandler));    
@@ -230,7 +247,6 @@ function islandora_services_register_services()
                 'function' => 'myendpoint_handler', 
                 'param_count' => 1, 
                 'security' => array('access content'),
-                'standalone' => true,
                 'format' => ServiceTypes::JSON,
                 'cache' => true,
                 'example' => '/myendpoint/{value}',
@@ -240,7 +256,7 @@ function islandora_services_register_services()
                 'function' => 'myendpoint_handler2',
                 'param_count' => 2,
                 'security' => array('access content'),
-                'standalone' => false,
+                'standalone' => false,   // <--- Default is true
                 'format' => ServiceTypes::HTML,
                 'cache' => true,
                 'example' => 'myendpoint/{value1}/{value2}',
