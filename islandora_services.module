@@ -33,7 +33,7 @@ function islandora_services_menu() {
             $items['islandora_services/'. $module ."/". $endpoint] = array(
                 'title' => $params['title'],
                 'page callback' => 'islandora_service_handler',
-                'page arguments' => array($module, $endpoint, $params),
+                'page arguments' => array($module, $params),
                 'access arguments' => $params['security'],
                 'type' => MENU_CALLBACK
             );
@@ -48,8 +48,8 @@ function islandora_services_list_page() {
 
     // Create the return element
     $content = null;
-
-    $header = array('Module', "End Point", "Title", "Callback", "Render In Drupal", "Example");
+            
+    $header = array('Module', "End Point", "Title", "Type", "Handler", "Standalone", "Format", "Example");
     $rows = array();
     $services = variable_get('islandora_services', NULL);
 
@@ -58,14 +58,39 @@ function islandora_services_list_page() {
         
         // Loop through all the end points to get the parameters
         foreach($endpoints as $endpoint => $params) {
-            
-            $render = "False";
-            if ( $params['render_drupal'] == true ) {
-                $render = "True";
+
+            // Get the function, datastream or file information
+            $type = "Unknown";
+            $handler = "None";
+            if ( array_key_exists('function', $params) ) {
+                $type = "Callback";
+                $handler = $params['function'];
+                
+            } elseif ( array_key_exists('datastream', $params) ) {
+                $type = "Datastream";
+                $handler = $params['datastream'];
+            } elseif ( array_key_exists('file', $params) ) {
+                $type = "File Passthru";
+                $handler = $params['file'];
             }
             
+            // Get the render status
+            $standalone = "False";
+            if ( $params['standalone'] == true ) {
+                $standalone = "True";
+            } 
+            
+            // Get the encoding format
+            $format = "";
+            if ( array_key_exists('format', $params) ) {
+                $format = $params['format'];
+            }
+            
+            global $base_url;
+            $url = $base_url . '/' . $module . '/' . $params['example'];
+            
             // Create the data row to be added to the table
-            $row = array($module, $endpoint, $params['title'], $params['function'], $render, $module . '/' . $params['example']);
+            $row = array($module, $endpoint, $params['title'], $type, $handler, $sandalone, $url);
             
             // Add it to the table
             $rows[] = $row;
@@ -84,7 +109,7 @@ function islandora_service_handler() {
     $args = func_get_args();
 
     // Check to make sure we have the module and endpoint parameters
-    if ( count($args) < 3 )
+    if ( count($args) < 2 )
     {
         var_dump($args);
         return "Malformed endpoint";
