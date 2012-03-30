@@ -1,8 +1,5 @@
 <?php
 
-// Create a global array for all the endpoints
-//$end_point_list = array();
-
 /**
  * Islandora menu hook
  * @return string 
@@ -36,7 +33,7 @@ function islandora_services_menu() {
             $items['islandora_services/'. $module ."/". $endpoint] = array(
                 'title' => $params['title'],
                 'page callback' => 'islandora_service_handler',
-                'page arguments' => array($module, $endpoint),
+                'page arguments' => array($module, $endpoint, $params),
                 'access arguments' => $params['security'],
                 'type' => MENU_CALLBACK
             );
@@ -87,41 +84,101 @@ function islandora_service_handler() {
     $args = func_get_args();
 
     // Check to make sure we have the module and endpoint parameters
-    if ( count($args) < 2 )
+    if ( count($args) < 3 )
     {
         var_dump($args);
         return "Malformed endpoint";
     }    
-    
-    // Get the list of services
-    $services = variable_get('islandora_services', NULL);
     
     // Create the results to be displayed
     $results = null;
 
     // Pop the module and endpoint of the front of the list
     $module = array_shift($args);
-    $endpoint = array_shift($args);
+    $params = array_shift($args);
     
-    // Get the details of the end 
-    $param_count = $services[$module][$endpoint]['param_count'];
-    $function = $services[$module][$endpoint]['function'];
-    $render_drupal = $services[$module][$endpoint]['render_drupal'];
+    if ( array_key_exists('function', $params) ) {
+   
+        // Check the param count
+        if ( $params['param_count'] != count($args) ) {
+            return "Parameter count doesn't match!";
+        }
+       
+        // Execute the function
+        $results = call_user_func_array($module.'_'.$function, $args);
         
-    // Check the param count
-    if ( $param_count != count($args) ) {
-        return "Parameter count doesn't match!";
+        // Do we want this to be standalone or rendered in drupal
+        if ( $params['standalone'] == true ) {
+            //header("Content-type: ???");
+        }
+
+    } 
+    elseif ( array_key_exists('datastream', $params) ) {
+
+        // Check the param count
+        if ( $params['param_count'] == 1 ) {
+            return "Parameter count doesn't match!";
+        }
+        
+        module_load_include('inc', 'fedora_repository', 'fedora_respository');
+        $results = makeObject($args[0], $params['datastream']);
+
+        // Do we want this to be standalone or rendered in drupal
+        if ( $params['standalone'] == true ) {
+            // Set the header to shockwave
+            //header("Content-type: ???");
+        }
+    } 
+    elseif ( array_key_exists('file', $params) ) {
+        
+        // Create a file handler to the player
+        $fileHandler = fopen(drupal_get_path('module', $module) . $params['file'], "r");
+    
+        // Psss the binary to the browser
+        $results = file_get_contents($fileHandler);
+    
+        // Do we want this to be standalone or rendered in drupal
+        if ( $params['standalone'] == true ) {
+            // Set the header to shockwave
+            //header("Content-type: ???");
+            //header("Content-Length: " . filesize($fileHandler));    
+        }
+    } 
+    else {
+        // Shouldn't reach here
+        echo("Module ". $module . " doesn't specify a handler. Your options are function, file or datastream");
+        var_dump($params);
+        die();
     }
-        
-    //$results = module_invoke($module, $function, $args);
-    $results = call_user_func_array($module.'_'.$function, $args);
-    
-    if ( $render_drupal == true ) {
-        return $results;
-    } else {
+
+    // Do we want this to be standalone or rendered in drupal
+    if ( $params['standalone'] == true ) {
+       
+        // Get the HTTP header 
+        $http = get_headers($url);
+        if ( $http[0] == 'HTTP/1.1 200 OK' ) {
+            // Show we enable caching
+            if ( $params['cache'] == true ) {
+                // Cache for a month
+                header("Cache-Control: max-age=2592000, must-revalidate"); // HTTP 1.1
+            } else {
+                header("Cache-Control: no-cache"); // HTTP 1.1
+            }
+        // HTTP 1.0 
+        } else {
+            // Show we NOT enable caching
+            if ( $params['cache'] != true ) {
+                header("Pragma: no-cache"); // HTTP 1.0
+            }
+        }
+        // Standalone
         echo $results;
+    } else {
+        // Render in drupal
+        return $results;
     }
 }
+
 
 /**
  * Example register endpoints hook
@@ -129,6 +186,9 @@ function islandora_service_handler() {
  */
 function islandora_services_register_services()
 {
+    // Load the service types
+    module_load_include('inc', 'islandora_services', 'ServiceTypes');
+
     // Define the end points
     return array(
         'islandora_services' => array (
@@ -137,15 +197,19 @@ function islandora_services_register_services()
                 'function' => 'myendpoint_handler', 
                 'param_count' => 1, 
                 'security' => array('access content'),
-                'render_drupal' => false, 
-                'example' => 'myendpoint/{value}',
+                'standalone' => true,
+                'format' => ServiceTypes::JSON,
+                'cache' => true,
+                'example' => '/myendpoint/{value}',
             ),
             'myendpoint2' => array (
                 'title' => 'test callback2',
                 'function' => 'myendpoint_handler2',
                 'param_count' => 2,
                 'security' => array('access content'),
-                'render_drupal' => true,
+                'standalone' => false,
+                'format' => ServiceTypes::HTML,
+                'cache' => true,
                 'example' => 'myendpoint/{value1}/{value2}',
             ),
         )
