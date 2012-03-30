@@ -80,17 +80,18 @@ function islandora_services_list_page() {
                 $standalone = "True";
             } 
             
+            
+            global $base_url;
+            $url = $base_url . '/' . $module . '/' . $params['example'];
+
             // Get the encoding format
-            $format = "";
+            $format = "None";
             if ( array_key_exists('format', $params) ) {
                 $format = $params['format'];
             }
             
-            global $base_url;
-            $url = $base_url . '/' . $module . '/' . $params['example'];
-            
             // Create the data row to be added to the table
-            $row = array($module, $endpoint, $params['title'], $type, $handler, $sandalone, $url);
+            $row = array($module, $endpoint, $params['title'], $type, $handler, $standalone, $format, $url);
             
             // Add it to the table
             $rows[] = $row;
