@@ -109,7 +109,11 @@ function islandora_service_handler() {
         
         // Do we want this to be standalone or rendered in drupal
         if ( $params['standalone'] == true ) {
-            //header("Content-type: ???");
+            if ( array_key_exists('format', $params) ) {
+                
+                // Set the header type
+                header("Content-type: " . $params['format'] );
+            }
         }
 
     } 
@@ -125,7 +129,6 @@ function islandora_service_handler() {
 
         // Do we want this to be standalone or rendered in drupal
         if ( $params['standalone'] == true ) {
-            // Set the header to shockwave
             //header("Content-type: ???");
         }
     } 
@@ -140,8 +143,8 @@ function islandora_service_handler() {
         // Do we want this to be standalone or rendered in drupal
         if ( $params['standalone'] == true ) {
             // Set the header to shockwave
-            //header("Content-type: ???");
-            //header("Content-Length: " . filesize($fileHandler));    
+            header("Content-type: ". mime_content_type($file));
+            header("Content-Length: " . filesize($fileHandler));    
         }
     } 
     else {
