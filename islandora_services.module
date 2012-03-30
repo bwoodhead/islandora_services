@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Islandora menu hook
+ * Islandora menu hook (Drupal Callback)
  * @return string 
  */
 function islandora_services_menu() {
@@ -9,7 +9,7 @@ function islandora_services_menu() {
     // Create an array to return
     $items = array();
 
-    // Display all endpoints page
+    // Define a display all endpoints page
     $items['islandora_services/list'] = array(
         'title' => 'Islandora Services List',
         'page callback' => 'islandora_services_list_page',
@@ -53,13 +53,16 @@ function islandora_services_list_page() {
     // Create the return element
     $content = null;
     
+    // Create the header
     $header = array("End Point", "Title", "Handler", "Standalone", "Format", "Example");
-    $rows = array();
+    
+    // Get all the services
     $services = variable_get('islandora_services', NULL);
 
     // Loop through all the modules to get endpoints
     foreach($services as $module => $endpoints) {
         
+        // Create a title
         $content .= "<br><h3>Module: " . $module . "</h3>";
         $rows = array();
         
@@ -84,6 +87,7 @@ function islandora_services_list_page() {
                 } 
             }
             
+            // Create a full example url
             global $base_url;
             $url = $base_url . '/' . $module . '/' . $params['example'];
 
@@ -166,6 +170,7 @@ function islandora_service_handler() {
             return "Parameter count doesn't match!";
         }
         
+        // Load the datastream from fedora
         module_load_include('inc', 'fedora_repository', 'fedora_respository');
         $results = makeObject($args[0], $params['datastream']);
 
