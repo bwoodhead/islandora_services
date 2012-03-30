@@ -56,7 +56,7 @@ function islandora_services_list_page() {
     // Loop through all the modules to get endpoints
     foreach($services as $module => $endpoints) {
         
-        $content .= "<br><b>" . $module . "</b><br>";
+        $content .= "<br><h3>Module: " . $module . "</h3>";
         $rows = array();
         
         // Loop through all the end points to get the parameters
