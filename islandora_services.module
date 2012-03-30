@@ -53,7 +53,7 @@ function islandora_services_list_page() {
     // Create the return element
     $content = null;
     
-    $header = array("End Point", "Title", "Type", "Handler", "Standalone", "Format", "Example");
+    $header = array("End Point", "Title", "Handler", "Standalone", "Format", "Example");
     $rows = array();
     $services = variable_get('islandora_services', NULL);
 
@@ -67,17 +67,13 @@ function islandora_services_list_page() {
         foreach($endpoints as $endpoint => $params) {
 
             // Get the function, datastream or file information
-            $type = "Unknown";
             $handler = "None";
             if ( array_key_exists('function', $params) ) {
-                $type = "Callback";
-                $handler = $params['function'];
+                $handler = "Function: " . $params['function'];
             } elseif ( array_key_exists('datastream', $params) ) {
-                $type = "Datastream";
                 $handler = "Datastream: " . $params['datastream'];
             } elseif ( array_key_exists('file', $params) ) {
-                $type = "File Passthru";
-                $handler = $params['file'];
+                $handler = "File: " . $params['file'];
             }
             
             // Get the render status
@@ -98,7 +94,7 @@ function islandora_services_list_page() {
             }
             
             // Create the data row to be added to the table
-            $row = array($endpoint, $params['title'], $type, $handler, $standalone, $format, $url);
+            $row = array($endpoint, $params['title'], $handler, $standalone, $format, $url);
             
             // Add it to the table
             $rows[] = $row;
